@@ -3,7 +3,8 @@
 import React, { useState, useCallback } from 'react';
 import Cropper, { Area, Point } from 'react-easy-crop';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
-import { getCroppedImg } from './utils/cropImage'; // You'll need to implement this
+import { getCroppedImg } from './utils/cropImage';
+import { Button } from '../components/ui/button'; // assuming you installed shadcn correctly
 
 export default function Home() {
   const [imageSrc, setImageSrc] = useState<string | null>(null);
@@ -25,8 +26,14 @@ export default function Home() {
         resultType: CameraResultType.DataUrl,
       });
       setImageSrc(image.dataUrl || null);
-      setCroppedImage(null); // Reset cropped image when selecting new one
+      setCroppedImage(null);
     } catch (error) {
+      if (error instanceof Error && 'code' in error) {
+        if ((error as any).code === 'E_USER_CANCELED') {
+          console.log("User canceled photo selection");
+          return;
+        }
+      }
       console.error('Error picking image:', error);
     }
   };
@@ -34,11 +41,8 @@ export default function Home() {
   const showCroppedImage = useCallback(async () => {
     try {
       if (!imageSrc || !croppedAreaPixels) return;
-      
-      const croppedImage = await getCroppedImg(
-        imageSrc,
-        croppedAreaPixels
-      );
+
+      const croppedImage = await getCroppedImg(imageSrc, croppedAreaPixels);
       setCroppedImage(croppedImage);
     } catch (e) {
       console.error('Error cropping image:', e);
@@ -46,24 +50,16 @@ export default function Home() {
   }, [imageSrc, croppedAreaPixels]);
 
   return (
-    <div style={{ padding: 20 }}>
-      <h1>Crop Image Example</h1>
+    <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-8 space-y-6">
+      <h1 className="text-3xl font-bold">Crop Image</h1>
 
       {!imageSrc ? (
-        <button
-          style={{ padding: '10px 20px', marginTop: 20 }}
-          onClick={selectImage}
-        >
+        <Button onClick={selectImage}>
           Select Image
-        </button>
+        </Button>
       ) : (
-        <>
-          <div style={{ 
-            position: 'relative', 
-            width: '100%', 
-            height: '400px',
-            background: '#333'
-          }}>
+        <div className="flex flex-col items-center space-y-6 w-full max-w-2xl">
+          <div className="relative w-full h-[400px] bg-muted rounded-md overflow-hidden">
             <Cropper
               image={imageSrc}
               crop={crop}
@@ -74,27 +70,27 @@ export default function Home() {
               onCropComplete={onCropComplete}
             />
           </div>
-          
-          <div style={{ marginTop: 20 }}>
-            <button onClick={showCroppedImage} style={{ marginRight: 10 }}>
+
+          <div className="flex gap-4">
+            <Button onClick={showCroppedImage}>
               Crop Image
-            </button>
-            <button onClick={selectImage}>
+            </Button>
+            <Button variant="outline" onClick={selectImage}>
               Select Different Image
-            </button>
+            </Button>
           </div>
-          
+
           {croppedImage && (
-            <div style={{ marginTop: 20 }}>
-              <h2>Cropped Result</h2>
-              <img 
-                src={croppedImage} 
-                alt="Cropped" 
-                style={{ maxWidth: '100%', maxHeight: 300 }}
+            <div className="flex flex-col items-center space-y-4">
+              <h2 className="text-2xl font-semibold">Cropped Result</h2>
+              <img
+                src={croppedImage}
+                alt="Cropped"
+                className="max-w-full max-h-72 rounded-md border"
               />
             </div>
           )}
-        </>
+        </div>
       )}
     </div>
   );
